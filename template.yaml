@@ -1,0 +1,418 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: >-
+  Infraestrutura serverless para web app com buckets S3, CloudFront, DynamoDB, Lambda, SQS, SNS e API Gateway.
+
+Transform: 
+  - AWS::Serverless-2016-10-31
+
+Resources:
+  #########################################################
+  ##                  BUCKETS S3
+  #########################################################
+
+  bucketS3WebSite:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "webapp-bucket-${AWS::Region}-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  bucketS3RepositoryObjects:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "repository-bucket-${AWS::Region}-${AWS::AccountId}"
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+        
+  bucketS3WebSitePolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref bucketS3WebSite
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: PolicyForCloudFrontWebApp
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: cloudfront.amazonaws.com
+            Action: s3:GetObject
+            Resource: !Sub
+              - "arn:aws:s3:::${Bucket}/*"
+              - Bucket: !Ref bucketS3WebSite
+  
+  bucketS3RepositoryObjectsPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref bucketS3RepositoryObjects
+      PolicyDocument:
+        Version: "2012-10-17"
+        Id: PolicyForRepositoryPublicAccess
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action: s3:GetObject
+            Resource: !Sub
+              - "arn:aws:s3:::${Bucket}/*"
+              - Bucket: !Ref bucketS3RepositoryObjects
+
+  #########################################################
+  ##                  CLOUDFRONT
+  #########################################################
+
+  cloudFrontWebAppOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "webapp-control-origin-${AWS::Region}-${AWS::AccountId}"
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  cloudFrontWebAppDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Origins:
+          - DomainName: !GetAtt bucketS3WebSite.RegionalDomainName
+            Id: !Sub "webapp-origin-s3-${AWS::Region}-${AWS::AccountId}"
+            OriginAccessControlId: !GetAtt cloudFrontWebAppOriginAccessControl.Id
+            S3OriginConfig: {}
+        Enabled: true
+        DefaultRootObject: index.html
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            - OPTIONS
+          TargetOriginId: !Sub "webapp-origin-s3-${AWS::Region}-${AWS::AccountId}"
+          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
+          ViewerProtocolPolicy: redirect-to-https
+        PriceClass: PriceClass_All
+        CustomErrorResponses:
+          - ErrorCode: 404
+            ResponseCode: 200
+            ResponsePagePath: /index.html
+        Restrictions:
+          GeoRestriction:
+            RestrictionType: whitelist
+            Locations:
+              - US
+              - BR
+
+  #########################################################
+  ##                  DYNAMODB TABLES
+  #########################################################
+
+  dynamoDBStoresTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: stores-table
+      AttributeDefinitions:
+        - AttributeName: storeId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: storeId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  dynamoDBProductsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: products-table
+      AttributeDefinitions:
+        - AttributeName: productId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: productId
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+
+  #########################################################
+  ##                  SQS QUEUE
+  #########################################################
+
+  SQSRequestStoreQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "request-store-queue-${AWS::Region}-${AWS::AccountId}"
+      VisibilityTimeout: 60
+
+  SQSRequestProductQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "request-product-queue-${AWS::Region}-${AWS::AccountId}"
+      VisibilityTimeout: 60
+
+  #########################################################
+  ##                  SNS TOPIC
+  #########################################################
+
+  SNSProductNotification:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "notification-${AWS::Region}-${AWS::AccountId}"
+
+  #########################################################
+  ##                  LAMBDA FUNCTIONS
+  #########################################################
+
+  storeRequestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src
+      Handler: storeRequest/index.storeRequestHandler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Timeout: 10 
+      MemorySize: 128
+      Description: Store registration request
+      Environment:
+        Variables:
+          STORES_TABLE: !Ref dynamoDBStoresTable
+          SQS_QUEUE_URL: !Ref SQSRequestStoreQueue
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref dynamoDBStoresTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt SQSRequestStoreQueue.QueueName
+        - Statement:
+            Effect: Allow
+            Action: lambda:InvokeFunction
+            Resource: "*"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /store
+            Method: POST
+            RestApiId: !Ref apiGateway
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        External:
+        - aws-sdk
+        EntryPoints:
+          - storeRequest/index.js
+
+  productRequestFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src
+      Handler: productRequest/index.productRequestHandler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Timeout: 10
+      MemorySize: 128
+      Description: Product registration request
+      Environment:
+        Variables:
+          PRODUCTS_TABLE: !Ref dynamoDBProductsTable
+          SQS_QUEUE_URL: !Ref SQSRequestProductQueue
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref dynamoDBProductsTable
+        - SQSSendMessagePolicy:
+            QueueName: !GetAtt SQSRequestProductQueue.QueueName
+        - Statement:
+            Effect: Allow
+            Action: lambda:InvokeFunction
+            Resource: "*"
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /product
+            Method: POST
+            RestApiId: !Ref apiGateway
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        External:
+        - aws-sdk
+        EntryPoints:
+          - productRequest/index.js
+
+  storeProcessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src
+      Handler: storeProcess/index.storeProcessHandler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Timeout: 10
+      MemorySize: 128
+      Description: Processes store registration
+      Environment:
+        Variables:
+          STORES_TABLE: !Ref dynamoDBStoresTable
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref dynamoDBStoresTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref dynamoDBStoresTable
+        - Statement:
+            Effect: Allow
+            Action:
+              - sns:CreateTopic
+              - sns:Subscribe
+            Resource: "*"
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt SQSRequestStoreQueue.Arn
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        External:
+        - aws-sdk
+        EntryPoints:
+          - storeProcess/index.js
+
+  productProcessFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: src
+      Handler: productProcess/index.productProcessHandler
+      Runtime: nodejs20.x
+      Architectures:
+        - x86_64
+      Timeout: 10
+      MemorySize: 128
+      Description: Processes product registration
+      Environment:
+        Variables:
+          BUCKET_STORAGE: !Ref bucketS3RepositoryObjects
+          PRODUCTS_TABLE: !Ref dynamoDBProductsTable
+          SNS_TOPIC_ARN: !Ref SNSProductNotification
+      Policies:
+        - DynamoDBWritePolicy:
+            TableName: !Ref dynamoDBProductsTable
+        - DynamoDBReadPolicy:
+            TableName: !Ref dynamoDBProductsTable
+        - SNSPublishMessagePolicy:
+            TopicName: !Ref SNSProductNotification
+        - S3WritePolicy:
+            BucketName: !Ref bucketS3RepositoryObjects
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt SQSRequestProductQueue.Arn
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        External:
+        - aws-sdk
+        EntryPoints:
+          - productProcess/index.js
+
+  #########################################################
+  ##                  API GATEWAY
+  #########################################################
+
+  apiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: v1
+      DefinitionBody:
+        swagger: '2.0'
+        info:
+          title: 'Web App API'
+          version: '1.0'
+        paths:
+          /store:
+            post:
+              summary: 'Store registration request'
+              operationId: 'storeRequest'
+              consumes:
+                - 'application/json'
+              produces:
+                - 'application/json'
+              parameters:
+                - name: 'body'
+                  in: 'body'
+                  required: true
+                  schema:
+                    type: 'object'
+                    properties:
+                      storeId:
+                        type: 'string'
+                      storeName:
+                        type: 'string'
+                      email:
+                        type: 'string'
+              responses:
+                '200':
+                  description: 'Successful response'
+                '400':
+                  description: 'Invalid input'
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${storeRequestFunction.Arn}/invocations
+                responses: {}
+          /product:
+            post:
+              summary: 'Product registration request'
+              operationId: 'productRequest'
+              consumes:
+                - 'application/json'
+              produces:
+                - 'application/json'
+              parameters:
+                - name: 'body'
+                  in: 'body'
+                  required: true
+                  schema:
+                    type: 'object'
+                    properties:
+                      productId:
+                        type: 'string'
+                      storeId:
+                        type: 'string'
+                      productName:
+                        type: 'string'
+              responses:
+                '200':
+                  description: 'Successful response'
+                '400':
+                  description: 'Invalid input'
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${productRequestFunction.Arn}/invocations
+                responses: {}
+
+Outputs:
+  WebAppDomain:
+    Value: !GetAtt cloudFrontWebAppDistribution.DomainName
+  ApiRestURL:
+    Value: !Sub "https://${apiGateway}.execute-api.${AWS::Region}.amazonaws.com/v1/"
