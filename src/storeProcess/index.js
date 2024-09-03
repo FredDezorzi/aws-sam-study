@@ -43,15 +43,6 @@ export const storeProcessHandler  = async (event) => {
         console.log("ENVIANDO SUBSCRIBE")
         await sns.send(subscribeCommand);
 
-        
-        const publishCommand = new PublishCommand({
-            TopicArn: topicArn,
-            Message: `Cadastro da loja ${store.storeName} (ID: ${store.storeId}) efetuado com sucesso.`
-        });
-
-        console.log("PUBLICANDO MENSAGEM: " + publishCommand.Message);
-        await sns.send(publishCommand);
-
         await dynamoDB.send(new PutItemCommand(command));
 
         return { statusCode: 200, body: "ok" };

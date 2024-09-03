@@ -26,7 +26,9 @@ export const storeRequestHandler = async (event) => {
             console.log("Loja já existe no DynamoDB");
             throw new Error('Store with this ID already exists')
         }
-        const responseBody = { message: `Caro(a) ${store.storeName}, sua loja está sendo processada, assim  que terminarmos o cadastro você será notificado pelo email: ${store.email}.` };
+        const responseBody = { 
+            message: `Caro(a) ${store.storeName}, sua loja está sendo processada. Para que o cadastro seja efetivado, será necessário que você aprove o cadastro através do email da aws que será enviado para: ${store.email}.` 
+          };
         const sendMessageCommandInput = {
             MessageBody: JSON.stringify(store),
             QueueUrl: sqsQueueUrl

@@ -277,7 +277,6 @@ Resources:
           Action:
           - sns:CreateTopic
           - sns:Subscribe
-          - sns:Publish
           Resource: '*'
       Events:
         SQSEvent:
