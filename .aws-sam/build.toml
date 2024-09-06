@@ -91,6 +91,23 @@ EntryPoints = ["storeRequest/index.js"]
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 [function_build_definitions.eb5162be-0122-4cd7-9349-e14844b539e9]
 codeuri = "C:\\Users\\fcdo\\Documents\\CURSO\\AWSFULLSTACK\\study-app\\src"
 runtime = "nodejs20.x"
@@ -109,6 +126,23 @@ Target = "es2020"
 Sourcemap = true
 External = ["aws-sdk"]
 EntryPoints = ["productRequest/index.js"]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -271,6 +305,23 @@ EntryPoints = ["storeProcess/index.js"]
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 [function_build_definitions.857a5d3a-f799-492e-963d-69101b9b4edb]
 codeuri = "C:\\Users\\fcdo\\Documents\\CURSO\\AWSFULLSTACK\\study-app\\src"
 runtime = "nodejs20.x"
@@ -289,6 +340,23 @@ Target = "es2020"
 Sourcemap = true
 External = ["aws-sdk"]
 EntryPoints = ["productProcess/index.js"]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

@@ -128,11 +128,15 @@ Resources:
     Properties:
       TableName: products-table
       AttributeDefinitions:
+        - AttributeName: storeId
+          AttributeType: S
         - AttributeName: productId
           AttributeType: S
       KeySchema:
-        - AttributeName: productId
+        - AttributeName: storeId
           KeyType: HASH
+        - AttributeName: productId
+          KeyType: RANGE
       ProvisionedThroughput:
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
@@ -152,10 +156,6 @@ Resources:
     Properties:
       QueueName: !Sub "request-product-queue-${AWS::Region}-${AWS::AccountId}"
       VisibilityTimeout: 60
-
-  #########################################################
-  ##                  SNS TOPIC
-  #########################################################
 
   #########################################################
   ##                  LAMBDA FUNCTIONS

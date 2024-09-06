@@ -1,5 +1,6 @@
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import { validateStorePayload } from  '../utils/validatePayload.js';
 
 const dynamoDB = new DynamoDBClient({ region: "us-east-1" });
 const sqs = new SQSClient({ region: "us-east-1" });
@@ -17,7 +18,12 @@ export const storeRequestHandler = async (event) => {
           storeId: { S: store.storeId} 
         },
       };
+
     try{
+        console.log("Iniciando validacao de paylaod...")
+        await validateStorePayload(store);
+        console.log("Payload validado");
+
         console.log("Iniciando consulta ao DynamoDB...");
         const result = await dynamoDB.send(new GetItemCommand(params));
         console.log("Resultado da consulta: ", JSON.stringify(result, null, 2));

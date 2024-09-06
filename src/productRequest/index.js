@@ -1,5 +1,6 @@
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import { validateProductPayload } from  '../utils/validatePayload.js';
 
 const dynamoDB = new DynamoDBClient({ region: "us-east-1" });
 const sqs = new SQSClient({ region: "us-east-1" });
@@ -11,15 +12,28 @@ export const productRequestHandler = async (event) => {
     console.log("INICIO LAMBDA");
     console.log("EVENT: " + JSON.stringify(event, null, 2));
     const product = JSON.parse(event.body);
-    console.log("DADOS PRODUCT: " + JSON.stringify(product, null, 2));
+    console.log("DADOS DO PRODUCT: " + JSON.stringify(product, null, 2));
+
+    const storeParams = {
+        TableName: storesTable,
+        Key: {
+            storeId: { S: product.storeId} 
+        },
+    }
+
+    const productsParams = {
+        TableName: productsTable,
+        Key: {
+            storeId: { S: product.storeId },
+            productId: { S: product.productId }
+        },
+    };
 
     try{
-        const storeParams = {
-            TableName: storesTable,
-            Key: {
-                storeId: { S: product.storeId} 
-            },
-        }
+        console.log("Iniciando validacao de paylaod...")
+        await validateProductPayload(product);
+        console.log("Payload validado");
+
         console.log("Iniciando consulta da loja...");
         const storeResult = await dynamoDB.send(new GetItemCommand(storeParams));
         console.log("Resultado da consulta: ", JSON.stringify(storeResult, null, 2));
@@ -32,26 +46,20 @@ export const productRequestHandler = async (event) => {
         console.log("STORE como JSON: " + JSON.stringify(store));
 
         if(!storeResult.Item){
-            console.log("Loja não existe a no DynamoDB");
+            console.log("Loja não existe no DynamoDB");
             throw new Error('Store with this ID does not exist')
         }
 
-        const productsParams = {
-            TableName: productsTable,
-            Key: {
-                productId: { S: product.productId} 
-            },
-        }
         console.log("Iniciando consulta do produto...");
         const productResult = await dynamoDB.send(new GetItemCommand(productsParams));
         console.log("Resultado da consulta: ", JSON.stringify(productResult, null, 2));
         if(productResult.Item){
             console.log("Id do produto já existe no DynamoDB");
-            throw new Error('Product with this ID already exists')
+            throw new Error(`Product with ID ${product.productId} already exists in ${store.storeName}`)
         }
 
         const responseBody = { 
-            message: `Caro(a) ${store.storeName}, sua seu produto está sendo processado. Quando o processamento finalizar você será notificado pelo email: ${store.email}.` 
+            message: `Caro(a) ${store.storeName}, sua seu produto ${product.productName} está sendo processado. Quando o processamento finalizar você será notificado pelo email: ${store.email}.` 
         };
         const messageBody = JSON.stringify({product, store});
         const sendMessageCommandInput = {
