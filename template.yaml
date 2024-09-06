@@ -157,11 +157,6 @@ Resources:
   ##                  SNS TOPIC
   #########################################################
 
-  SNSProductNotification:
-    Type: AWS::SNS::Topic
-    Properties:
-      TopicName: !Sub "notification-${AWS::Region}-${AWS::AccountId}"
-
   #########################################################
   ##                  LAMBDA FUNCTIONS
   #########################################################
@@ -222,9 +217,12 @@ Resources:
       Environment:
         Variables:
           PRODUCTS_TABLE: !Ref dynamoDBProductsTable
+          STORES_TABLE: !Ref dynamoDBStoresTable
           SQS_QUEUE_URL: !Ref SQSRequestProductQueue
       Policies:
-        - DynamoDBWritePolicy:
+        - DynamoDBReadPolicy:
+            TableName: !Ref dynamoDBStoresTable
+        - DynamoDBReadPolicy:
             TableName: !Ref dynamoDBProductsTable
         - SQSSendMessagePolicy:
             QueueName: !GetAtt SQSRequestProductQueue.QueueName
@@ -306,16 +304,17 @@ Resources:
         Variables:
           BUCKET_STORAGE: !Ref bucketS3RepositoryObjects
           PRODUCTS_TABLE: !Ref dynamoDBProductsTable
-          SNS_TOPIC_ARN: !Ref SNSProductNotification
       Policies:
         - DynamoDBWritePolicy:
             TableName: !Ref dynamoDBProductsTable
         - DynamoDBReadPolicy:
             TableName: !Ref dynamoDBProductsTable
-        - SNSPublishMessagePolicy:
-            TopicName: !Ref SNSProductNotification
         - S3WritePolicy:
             BucketName: !Ref bucketS3RepositoryObjects
+        - Statement:
+            Effect: Allow
+            Action: sns:Publish
+            Resource: "*"
       Events:
         SQSEvent:
           Type: SQS
@@ -393,12 +392,14 @@ Resources:
                   schema:
                     type: 'object'
                     properties:
-                      productId:
-                        type: 'string'
                       storeId:
+                        type: 'string'
+                      productId:
                         type: 'string'
                       productName:
                         type: 'string'
+                      price:
+                        type: 'number'
               responses:
                 '200':
                   description: 'Successful response'
