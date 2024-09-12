@@ -38,7 +38,8 @@ export const storeProcessHandler  = async (event) => {
                 "storeId": { S: store.storeId },
                 "storeName": { S: store.storeName },
                 "email": { S: store.email },
-                "topicArn": { S: topicArn}
+                "topicArn": { S: topicArn},
+                "topicStatus": { S: 'Pending'}
             }
         };
 

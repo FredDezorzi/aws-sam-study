@@ -1,5 +1,5 @@
 import { DynamoDBClient, PutItemCommand  } from "@aws-sdk/client-dynamodb";
-import { SNSClient, CreateTopicCommand, SubscribeCommand, PublishCommand } from "@aws-sdk/client-sns";
+import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
 
 const dynamoDB = new DynamoDBClient({ region: "us-east-1" });
 const sns = new SNSClient({ region: "us-east-1" });

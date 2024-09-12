@@ -352,6 +352,52 @@ Resources:
         Sourcemap: true
         Target: es2020
       SamResourceId: productProcessFunction
+  emailApprovalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: emailApprovalFunction
+      Handler: index.emailApprovalHandler
+      Runtime: nodejs20.x
+      Architectures:
+      - x86_64
+      Timeout: 10
+      MemorySize: 128
+      Description: "Verifica a aprova\xE7\xE3o de email de varios topicos SNS"
+      Environment:
+        Variables:
+          STORES_TABLE:
+            Ref: dynamoDBStoresTable
+          NODE_OPTIONS: ' --enable-source-maps'
+      Policies:
+      - DynamoDBWritePolicy:
+          TableName:
+            Ref: dynamoDBStoresTable
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: dynamoDBStoresTable
+      - Statement:
+          Effect: Allow
+          Action:
+          - sns:Publish
+          - sns:GetSubscriptionAttributes
+          - sns:ListSubscriptionsByTopic
+          Resource: '*'
+      Events:
+        CheckSubscriptionsSchedule:
+          Type: Schedule
+          Properties:
+            Schedule: rate(1 minute)
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - emailApproval/index.js
+        External:
+        - aws-sdk
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: emailApprovalFunction
   apiGateway:
     Type: AWS::Serverless::Api
     Properties:

@@ -10,7 +10,6 @@ const sqsQueueUrl  = process.env.SQS_QUEUE_URL;
 
 export const productRequestHandler = async (event) => {
     console.log("INICIO LAMBDA");
-    console.log("EVENT: " + JSON.stringify(event, null, 2));
     const product = JSON.parse(event.body);
     console.log("DADOS DO PRODUCT: " + JSON.stringify(product, null, 2));
 
@@ -32,27 +31,29 @@ export const productRequestHandler = async (event) => {
     try{
         console.log("Iniciando validacao de paylaod...")
         await validateProductPayload(product);
-        console.log("Payload validado");
 
         console.log("Iniciando consulta da loja...");
         const storeResult = await dynamoDB.send(new GetItemCommand(storeParams));
-        console.log("Resultado da consulta: ", JSON.stringify(storeResult, null, 2));
         const store = {
             storeId: storeResult.Item.storeId.S,
             storeName: storeResult.Item.storeName.S,
             topicArn: storeResult.Item.topicArn.S,
+            topicStatus: storeResult.Item.topicStatus.S,
             email: storeResult.Item.email.S
         };
-        console.log("STORE como JSON: " + JSON.stringify(store));
 
         if(!storeResult.Item){
             console.log("Loja não existe no DynamoDB");
             throw new Error('Store with this ID does not exist')
         }
 
+        if(storeResult.Item.topicStatus.S == "Pending"){
+            console.log("Email ainda não aprovado");
+            throw new Error(`To be able to register a product, please confirm subscription via email sent to:  ${store.email}`)
+        }
+
         console.log("Iniciando consulta do produto...");
         const productResult = await dynamoDB.send(new GetItemCommand(productsParams));
-        console.log("Resultado da consulta: ", JSON.stringify(productResult, null, 2));
         if(productResult.Item){
             console.log("Id do produto já existe no DynamoDB");
             throw new Error(`Product with ID ${product.productId} already exists in ${store.storeName}`)
@@ -67,7 +68,7 @@ export const productRequestHandler = async (event) => {
             QueueUrl: sqsQueueUrl
         }
 
-        console.log("MENSAGEM ANTES DO SQS: " + JSON.stringify(responseBody, null, 2));
+        console.log("ENVIANDO MENSAGEM: " + JSON.stringify(responseBody, null, 2));
         const command = new SendMessageCommand(sendMessageCommandInput);
         await sqs.send(command);
         return { 
