@@ -398,6 +398,86 @@ Resources:
         Sourcemap: true
         Target: es2020
       SamResourceId: emailApprovalFunction
+  authorizationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: authorizationFunction
+      Handler: index.authorizationHandler
+      Runtime: nodejs20.x
+      Architectures:
+      - x86_64
+      Timeout: 10
+      MemorySize: 128
+      Description: Cria token de acesso para o usuario
+      Environment:
+        Variables:
+          COGNITO_ID:
+            Ref: cognitoUserClient
+          COGNITO_SECRET:
+            Fn::GetAtt:
+            - cognitoUserClient
+            - ClientSecret
+          NODE_OPTIONS: ' --enable-source-maps'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /auth
+            Method: POST
+            RestApiId:
+              Ref: apiGateway
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - authorization/index.js
+        External:
+        - aws-sdk
+        - '@aws-sdk/client-cognito-identity-provider'
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: authorizationFunction
+  challengeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: challengeFunction
+      Handler: index.challengeHandler
+      Runtime: nodejs20.x
+      Architectures:
+      - x86_64
+      Timeout: 10
+      MemorySize: 128
+      Description: Muda a senha do userpool
+      Environment:
+        Variables:
+          COGNITO_ID:
+            Ref: cognitoUserClient
+          COGNITO_SECRET:
+            Fn::GetAtt:
+            - cognitoUserClient
+            - ClientSecret
+          NODE_OPTIONS: ' --enable-source-maps'
+      Events:
+        Api:
+          Type: Api
+          Properties:
+            Path: /challenge
+            Method: POST
+            RestApiId:
+              Ref: apiGateway
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        EntryPoints:
+        - challenge/index.js
+        External:
+        - aws-sdk
+        - '@aws-sdk/client-cognito-identity-provider'
+        Minify: true
+        Sourcemap: true
+        Target: es2020
+      SamResourceId: challengeFunction
   apiGateway:
     Type: AWS::Serverless::Api
     Properties:
@@ -408,6 +488,70 @@ Resources:
           title: Web App API
           version: '1.0'
         paths:
+          /challenge:
+            post:
+              summary: challenge new password request
+              operationId: challengeRequest
+              consumes:
+              - application/json
+              produces:
+              - application/json
+              parameters:
+              - name: body
+                in: body
+                required: true
+                schema:
+                  type: object
+                  properties:
+                    newPassword:
+                      type: string
+                    USER_ID_FOR_SRP:
+                      type: string
+                    Session:
+                      type: string
+              responses:
+                '200':
+                  description: Successful response
+                '400':
+                  description: Invalid input
+              security: []
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${challengeFunction.Arn}/invocations
+                responses: {}
+          /auth:
+            post:
+              summary: Authentication request
+              operationId: authorizationRequest
+              consumes:
+              - application/json
+              produces:
+              - application/json
+              parameters:
+              - name: body
+                in: body
+                required: true
+                schema:
+                  type: object
+                  properties:
+                    username:
+                      type: string
+                    password:
+                      type: string
+              responses:
+                '200':
+                  description: Successful response
+                '400':
+                  description: Invalid input
+              security: []
+              x-amazon-apigateway-integration:
+                type: aws_proxy
+                httpMethod: POST
+                uri:
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${authorizationFunction.Arn}/invocations
+                responses: {}
           /store:
             post:
               summary: Store registration request
@@ -434,6 +578,8 @@ Resources:
                   description: Successful response
                 '400':
                   description: Invalid input
+              security:
+              - cognitoAuth: []
               x-amazon-apigateway-integration:
                 type: aws_proxy
                 httpMethod: POST
@@ -468,12 +614,82 @@ Resources:
                   description: Successful response
                 '400':
                   description: Invalid input
+              security:
+              - cognitoAuth: []
               x-amazon-apigateway-integration:
                 type: aws_proxy
                 httpMethod: POST
                 uri:
                   Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${productRequestFunction.Arn}/invocations
                 responses: {}
+      Auth:
+        Authorizers:
+          cognitoAuth:
+            UserPoolArn:
+              Fn::GetAtt:
+              - cognitoUserPool
+              - Arn
+            AuthType: COGNITO_USER_POOLS
+            Identity:
+              Headers:
+              - Authorization
+  cognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: cognito-studyapp-user-pool
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: false
+          TemporaryPasswordValidityDays: 7
+      Schema:
+      - AttributeDataType: String
+        Name: email
+        Mutable: true
+        Required: true
+      UsernameAttributes:
+      - email
+      AutoVerifiedAttributes:
+      - email
+      UsernameConfiguration:
+        CaseSensitive: false
+  cognitoUserClient:
+    Type: AWS::Cognito::UserPoolClient
+    Properties:
+      ClientName: cognito-studyapp-user-client
+      GenerateSecret: true
+      UserPoolId:
+        Ref: cognitoUserPool
+      AccessTokenValidity: 5
+      ExplicitAuthFlows:
+      - ADMIN_NO_SRP_AUTH
+      - USER_PASSWORD_AUTH
+      AllowedOAuthFlows:
+      - implicit
+      AllowedOAuthFlowsUserPoolClient: true
+      AllowedOAuthScopes:
+      - email
+      - openid
+      - profile
+      SupportedIdentityProviders:
+      - COGNITO
+      CallbackURLs:
+      - http://localhost:8080
+  cognitoResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      Identifier: cognito-studyapp-resource-Server
+      Name: cognitoResourceServer
+      Scopes:
+      - ScopeDescription: "Permissao de acesso \xE0 autentifica\xE7\xE3o"
+        ScopeName: user_acess
+      UserPoolId:
+        Ref: cognitoUserPool
 Outputs:
   WebAppDomain:
     Value:
