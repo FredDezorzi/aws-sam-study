@@ -1,5 +1,6 @@
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import { v4 as uuidv4 } from 'uuid';
 import { validateStorePayload } from  '../utils/validatePayload.js';
 
 const dynamoDB = new DynamoDBClient({ region: "us-east-1" });
@@ -12,12 +13,13 @@ export const storeRequestHandler = async (event) => {
     console.log("EVENT: " + JSON.stringify(event, null, 2));
     const store = JSON.parse(event.body);
     console.log("DADOS STORE: " + JSON.stringify(store, null, 2));
+    store.storeId = uuidv4();
     const params = {
         TableName: storesTable,
         Key: {
           storeId: { S: store.storeId} 
         },
-      };
+    };
 
     try{
         console.log("Iniciando validacao de paylaod...")

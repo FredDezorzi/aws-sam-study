@@ -534,8 +534,6 @@ Resources:
                   schema:
                     type: 'object'
                     properties:
-                      storeId:
-                        type: 'string'
                       storeName:
                         type: 'string'
                       email:
@@ -569,8 +567,6 @@ Resources:
                     type: 'object'
                     properties:
                       storeId:
-                        type: 'string'
-                      productId:
                         type: 'string'
                       productName:
                         type: 'string'

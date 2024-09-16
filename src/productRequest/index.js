@@ -1,5 +1,6 @@
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
+import { v4 as uuidv4 } from 'uuid';
 import { validateProductPayload } from  '../utils/validatePayload.js';
 
 const dynamoDB = new DynamoDBClient({ region: "us-east-1" });
@@ -12,6 +13,8 @@ export const productRequestHandler = async (event) => {
     console.log("INICIO LAMBDA");
     const product = JSON.parse(event.body);
     console.log("DADOS DO PRODUCT: " + JSON.stringify(product, null, 2));
+    product.productId = uuidv4();
+
 
     const storeParams = {
         TableName: storesTable,

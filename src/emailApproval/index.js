@@ -1,5 +1,5 @@
 import { DynamoDBClient, ScanCommand, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
-import { SNSClient, ListSubscriptionsByTopicCommand, GetSubscriptionAttributesCommand } from "@aws-sdk/client-sns";
+import { SNSClient, ListSubscriptionsByTopicCommand, GetSubscriptionAttributesCommand, PublishCommand } from "@aws-sdk/client-sns";
 
 const dynamoDB = new DynamoDBClient({ region: "us-east-1" });
 const sns = new SNSClient({ region: "us-east-1" });
@@ -68,6 +68,13 @@ export const emailApprovalHandler = async (event) => {
 
                 console.log("ATUALIZANDO STATUS")
                 await dynamoDB.send(new UpdateItemCommand(updateParams));
+                const snsMessage = {
+                    Message: `O cadastro da loja ${item.storeName.S} efetuado com sucesso, para realizar cadastro de produtos utilizar o id: ${item.storeId.S}`,
+                    TopicArn: item.topicArn.S
+                };
+                console.log("Enviando mensagem ao SNS...");
+                await sns.send(new PublishCommand(snsMessage));
+                console.log("Mensagem enviada ao SNS com sucesso");
             };
 
         }
