@@ -1,10 +1,11 @@
-import { createHmac } from 'crypto';
 import { CognitoIdentityProviderClient, RespondToAuthChallengeCommand } from "@aws-sdk/client-cognito-identity-provider";
+import { generateCognitoSecretHash } from  '../utils/index.js';
+
 const client = new CognitoIdentityProviderClient({ region: "us-east-1" });
 
 export const challengeHandler = async (event) => {
+  try {
     const credentials = JSON.parse(event.body);
-    console.log("CREDENTIALS:", JSON.stringify(credentials, null, 2));
     const params = {
       ChallengeName: "NEW_PASSWORD_REQUIRED",
       ClientId: process.env.COGNITO_ID,
@@ -19,26 +20,18 @@ export const challengeHandler = async (event) => {
       },
       Session: credentials.Session,
     }
-      console.log("params:", JSON.stringify(params, null, 2));
-
-      try {
-        const command = new RespondToAuthChallengeCommand(params);
-        const response = await client.send(command);
-        console.log("Autenticado com sucesso:", response);
-        return { 
-            statusCode: 200, 
-            body: JSON.stringify(response)
-        };
-      } catch (error) {
-        console.error("Erro ao responder ao desafio:", error);
-        return {
-            statusCode: 500,
-            body: JSON.stringify({ message: error.message }),
-          };
-      }
+    const command = new RespondToAuthChallengeCommand(params);
+    const responseBody = await client.send(command);
+    
+    return { 
+        statusCode: 200, 
+        body: JSON.stringify(responseBody)
+    };
+  }catch(err){  
+    const responseBody = { message: `Error: ${err.message}` }
+    return {
+        statusCode: 500,
+        body: JSON.stringify(responseBody)
+    };
+  } 
 }
-
-function generateCognitoSecretHash(clientId, clientSecret, username,) {
-    const message = username + clientId;
-    return createHmac('sha256', clientSecret).update(message).digest('base64');
-  }

@@ -6,16 +6,10 @@ const sns = new SNSClient({ region: "us-east-1" });
 const productsTable = process.env.PRODUCTS_TABLE;
 
 export const productProcessHandler  = async (event) => {
-    console.log("PROCESSOR INICIADO")
-    console.log("EVENT: " + JSON.stringify(event, null, 2));
-    const body = JSON.parse(event.Records[0].body);
-    console.log("BODY: " + JSON.stringify(body));
-    const product = body.product;
-    const store = body.store;
-    console.log("PRODUCT: " + JSON.stringify(product));
-    console.log("STORE: " + JSON.stringify(store));
-
     try{
+        const body = JSON.parse(event.Records[0].body);
+        const product = body.product;
+        const store = body.store;
         const command = {
             TableName: productsTable,
             Item: {
@@ -25,23 +19,22 @@ export const productProcessHandler  = async (event) => {
                 "price": { N: product.price.toString()}
             }
         };
-
-        console.log("COMMAND CRIADO: " + JSON.stringify(command));
-
         const snsMessage = {
-            Message: `O produto ${product.productName} da loja ${store.storeName} foi processado com sucesso.`,
+            Message: `The product ${product.productName} has been successfully registered in ${store.storeName}.`,
             TopicArn: store.topicArn
         };
-
-        console.log("Enviando mensagem ao SNS...");
-        await sns.send(new PublishCommand(snsMessage));
-        console.log("Mensagem enviada ao SNS com sucesso");
-
         await dynamoDB.send(new PutItemCommand(command));
+        await sns.send(new PublishCommand(snsMessage));
 
-        return { statusCode: 200, body: "Produto processado e mensagem enviada ao SNS" };
-    } catch (error) {
-        console.error("Erro:", error);
-        return { statusCode: 500, body: "Erro interno do servidor" };
-    }
+        return { 
+            statusCode: 200,
+             body: "ok" 
+        };
+    }catch(err){
+        const responseBody = { message: `Error: ${err.message}` }
+        return {
+            statusCode: 500,
+            body: JSON.stringify(responseBody)
+        };
+    } 
 }

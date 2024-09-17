@@ -1,10 +1,11 @@
-import { createHmac } from 'crypto';
 import { CognitoIdentityProviderClient, InitiateAuthCommand } from "@aws-sdk/client-cognito-identity-provider";
+import { generateCognitoSecretHash } from  '../utils/index.js';
+
 const client = new CognitoIdentityProviderClient({ region: "us-east-1" });
 
 export const authorizationHandler = async (event) => {
+  try {
     const credentials = JSON.parse(event.body);
-    console.log("CREDENTIALS:", JSON.stringify(credentials, null, 2));
     const params = {
       AuthFlow: 'USER_PASSWORD_AUTH',
       ClientId: process.env.COGNITO_ID,
@@ -18,30 +19,18 @@ export const authorizationHandler = async (event) => {
         ),
       },
     };
-    console.log("params para secret  hash: client_ID: " + process.env.COGNITO_ID + " secretId: " + process.env.COGNITO_SECRET + " username: " + credentials.username);
-    console.log("params:", JSON.stringify(params, null, 2));
+    const command = new InitiateAuthCommand(params);
+    const responseBody = await client.send(command);
 
-    try {
-        const command = new InitiateAuthCommand(params);
-        const response = await client.send(command);
-    
-        return { 
-            statusCode: 200, 
-            body: JSON.stringify(response)
-        };
-    } catch(error) {
-        return {
-          statusCode: 500,
-          body: JSON.stringify({ message: error.message }),
-        };
-    }
+    return { 
+        statusCode: 200, 
+        body: JSON.stringify(responseBody)
+    };
+  }catch(err){  
+    const responseBody = { message: `Error: ${err.message}` }
+    return {
+        statusCode: 500,
+        body: JSON.stringify(responseBody)
+    };
+  } 
 }
-
-function generateCognitoSecretHash(
-    clientId,
-    clientSecret,
-    username,
-  ) {
-    const message = username + clientId;
-    return createHmac('sha256', clientSecret).update(message).digest('base64');
-  }
