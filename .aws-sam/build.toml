@@ -180,6 +180,11 @@ EntryPoints = ["storeRequest/index.js"]
 
 
 
+
+
+
+
+
 [function_build_definitions.eb5162be-0122-4cd7-9349-e14844b539e9]
 codeuri = "C:\\Users\\fcdo\\Documents\\CURSO\\AWSFULLSTACK\\study-app\\src"
 runtime = "nodejs20.x"
@@ -198,6 +203,11 @@ Target = "es2020"
 Sourcemap = true
 External = ["aws-sdk"]
 EntryPoints = ["productRequest/index.js"]
+
+
+
+
+
 
 
 
@@ -538,6 +548,11 @@ EntryPoints = ["storeProcess/index.js"]
 
 
 
+
+
+
+
+
 [function_build_definitions.857a5d3a-f799-492e-963d-69101b9b4edb]
 codeuri = "C:\\Users\\fcdo\\Documents\\CURSO\\AWSFULLSTACK\\study-app\\src"
 runtime = "nodejs20.x"
@@ -556,6 +571,11 @@ Target = "es2020"
 Sourcemap = true
 External = ["aws-sdk"]
 EntryPoints = ["productProcess/index.js"]
+
+
+
+
+
 
 
 
@@ -804,6 +824,11 @@ EntryPoints = ["emailApproval/index.js"]
 
 
 
+
+
+
+
+
 [function_build_definitions.001cecc0-b5f3-48a3-86f5-965238bc18ad]
 codeuri = "C:\\Users\\fcdo\\Documents\\CURSO\\AWSFULLSTACK\\study-app\\src"
 runtime = "nodejs20.x"
@@ -857,6 +882,11 @@ EntryPoints = ["authorization/index.js"]
 
 
 
+
+
+
+
+
 [function_build_definitions.a4228379-f7a6-4855-b7a4-39fc1372c243]
 codeuri = "C:\\Users\\fcdo\\Documents\\CURSO\\AWSFULLSTACK\\study-app\\src"
 runtime = "nodejs20.x"
@@ -875,6 +905,11 @@ Target = "es2020"
 Sourcemap = true
 External = ["aws-sdk", "@aws-sdk/client-cognito-identity-provider"]
 EntryPoints = ["challenge/index.js"]
+
+
+
+
+
 
 
 

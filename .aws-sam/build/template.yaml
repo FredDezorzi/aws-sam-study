@@ -4,16 +4,6 @@ Description: Infraestrutura serverless para web app com buckets S3, CloudFront, 
 Transform:
 - AWS::Serverless-2016-10-31
 Resources:
-  bucketS3WebSite:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName:
-        Fn::Sub: webapp-bucket-${AWS::Region}-${AWS::AccountId}
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: true
-        BlockPublicPolicy: true
-        IgnorePublicAcls: true
-        RestrictPublicBuckets: true
   bucketS3RepositoryObjects:
     Type: AWS::S3::Bucket
     Properties:
@@ -24,24 +14,6 @@ Resources:
         BlockPublicPolicy: false
         IgnorePublicAcls: false
         RestrictPublicBuckets: false
-  bucketS3WebSitePolicy:
-    Type: AWS::S3::BucketPolicy
-    Properties:
-      Bucket:
-        Ref: bucketS3WebSite
-      PolicyDocument:
-        Version: '2012-10-17'
-        Id: PolicyForCloudFrontWebApp
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service: cloudfront.amazonaws.com
-          Action: s3:GetObject
-          Resource:
-            Fn::Sub:
-            - arn:aws:s3:::${Bucket}/*
-            - Bucket:
-                Ref: bucketS3WebSite
   bucketS3RepositoryObjectsPolicy:
     Type: AWS::S3::BucketPolicy
     Properties:
@@ -59,53 +31,6 @@ Resources:
             - arn:aws:s3:::${Bucket}/*
             - Bucket:
                 Ref: bucketS3RepositoryObjects
-  cloudFrontWebAppOriginAccessControl:
-    Type: AWS::CloudFront::OriginAccessControl
-    Properties:
-      OriginAccessControlConfig:
-        Name:
-          Fn::Sub: webapp-control-origin-${AWS::Region}-${AWS::AccountId}
-        OriginAccessControlOriginType: s3
-        SigningBehavior: always
-        SigningProtocol: sigv4
-  cloudFrontWebAppDistribution:
-    Type: AWS::CloudFront::Distribution
-    Properties:
-      DistributionConfig:
-        Origins:
-        - DomainName:
-            Fn::GetAtt:
-            - bucketS3WebSite
-            - RegionalDomainName
-          Id:
-            Fn::Sub: webapp-origin-s3-${AWS::Region}-${AWS::AccountId}
-          OriginAccessControlId:
-            Fn::GetAtt:
-            - cloudFrontWebAppOriginAccessControl
-            - Id
-          S3OriginConfig: {}
-        Enabled: true
-        DefaultRootObject: index.html
-        DefaultCacheBehavior:
-          AllowedMethods:
-          - GET
-          - HEAD
-          - OPTIONS
-          TargetOriginId:
-            Fn::Sub: webapp-origin-s3-${AWS::Region}-${AWS::AccountId}
-          CachePolicyId: 658327ea-f89d-4fab-a63d-7e88639e58f6
-          ViewerProtocolPolicy: redirect-to-https
-        PriceClass: PriceClass_All
-        CustomErrorResponses:
-        - ErrorCode: 404
-          ResponseCode: 200
-          ResponsePagePath: /index.html
-        Restrictions:
-          GeoRestriction:
-            RestrictionType: whitelist
-            Locations:
-            - US
-            - BR
   dynamoDBStoresTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -687,11 +612,6 @@ Resources:
       UserPoolId:
         Ref: cognitoUserPool
 Outputs:
-  WebAppDomain:
-    Value:
-      Fn::GetAtt:
-      - cloudFrontWebAppDistribution
-      - DomainName
   ApiRestURL:
     Value:
       Fn::Sub: https://${apiGateway}.execute-api.${AWS::Region}.amazonaws.com/v1/

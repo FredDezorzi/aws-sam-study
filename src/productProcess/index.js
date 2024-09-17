@@ -1,9 +1,12 @@
 import { DynamoDBClient, PutItemCommand  } from "@aws-sdk/client-dynamodb";
 import { SNSClient, PublishCommand } from "@aws-sdk/client-sns";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3"; // Importando S3
 
 const dynamoDB = new DynamoDBClient({ region: "us-east-1" });
 const sns = new SNSClient({ region: "us-east-1" });
+const s3 = new S3Client({ region: "us-east-1" }); // Inicializando o S3 Client
 const productsTable = process.env.PRODUCTS_TABLE;
+const productsBucket = process.env.BUCKET_STORAGE;
 
 export const productProcessHandler  = async (event) => {
     try{
@@ -23,7 +26,14 @@ export const productProcessHandler  = async (event) => {
             Message: `The product ${product.productName} has been successfully registered in ${store.storeName}.`,
             TopicArn: store.topicArn
         };
+        const s3Params = {
+            Bucket: productsBucket,
+            Key: `${product.storeId}/${product.productId}.json`,
+            Body: JSON.stringify(product),
+            ContentType: "application/json"
+        };
         await dynamoDB.send(new PutItemCommand(command));
+        await s3.send(new PutObjectCommand(s3Params));
         await sns.send(new PublishCommand(snsMessage));
 
         return { 
