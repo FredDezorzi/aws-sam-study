@@ -1,140 +1,189 @@
-# study-app
+# AWS SAM Application - Web App Infrastructure
 
-This project contains source code and supporting files for a serverless application that you can deploy with the AWS Serverless Application Model (AWS SAM) command line interface (CLI). It includes the following files and folders:
+This repository contains the AWS SAM (Serverless Application Model) template to set up the infrastructure for a web application. The infrastructure includes services like S3, Cognito, EventBridge, DynamoDB, Lambda, SQS, SNS, and API Gateway.
 
-- `src` - Code for the application's Lambda function.
-- `events` - Invocation events that you can use to invoke the function.
-- `__tests__` - Unit tests for the application code. 
-- `template.yaml` - A template that defines the application's AWS resources.
+## Features
 
-Resources for this project are defined in the `template.yaml` file in this project. You can update the template to add AWS resources through the same deployment process that updates your application code.
+- **S3 Buckets**: Storage for repository objects.
+- **DynamoDB**: Two tables for storing user and product data.
+- **SQS**: Queues for processing store and product requests.
+- **SNS**: Topics for sending notifications, including email confirmations.
+- **Lambda Functions**: Backend logic for handling API requests, processing messages, and managing email notifications.
+- **API Gateway**: Provides HTTP endpoints for store and product registration, authentication, and password management.
+- **Cognito**: Manages user authentication and access control.
 
-If you prefer to use an integrated development environment (IDE) to build and test your application, you can use the AWS Toolkit.  
-The AWS Toolkit is an open-source plugin for popular IDEs that uses the AWS SAM CLI to build and deploy serverless applications on AWS. The AWS Toolkit also adds step-through debugging for Lambda function code. 
+## Notification and Confirmation Process
 
-To get started, see the following:
+The application includes a notification workflow for store registration and email confirmation:
 
-* [CLion](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [GoLand](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [IntelliJ](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [WebStorm](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [Rider](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [PhpStorm](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [PyCharm](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [RubyMine](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [DataGrip](https://docs.aws.amazon.com/toolkit-for-jetbrains/latest/userguide/welcome.html)
-* [VS Code](https://docs.aws.amazon.com/toolkit-for-vscode/latest/userguide/welcome.html)
-* [Visual Studio](https://docs.aws.amazon.com/toolkit-for-visual-studio/latest/user-guide/welcome.html)
+1. **Store Registration**:
+   - When a store is registered via the `/store` endpoint, an email is sent to the store owner with a confirmation link.
+   - The email contains a unique token that the owner must use to confirm their email address and activate their store.
 
-## Deploy the sample application
+2. **Email Confirmation**:
+   - The store owner clicks the confirmation link in the email.
+   - This action triggers the `emailApprovalFunction` Lambda function, which validates the token and confirms the store registration.
+   - Once confirmed, the store owner receives a second email containing a unique store ID.
 
-The AWS SAM CLI is an extension of the AWS CLI that adds functionality for building and testing Lambda applications. It uses Docker to run your functions in an Amazon Linux environment that matches Lambda. It can also emulate your application's build environment and API.
+3. **Store ID**:
+   - The store ID provided in the second email is required for registering products in the store.
+   - The store ID must be used when making requests to the `/product` endpoint to associate products with the correct store.
+  
+## User Creation and Authentication
 
-To use the AWS SAM CLI, you need the following tools:
+To use the /store and /product endpoints, you need an authorization token. The process to obtain this token involves the following steps:
 
-* AWS SAM CLI - [Install the AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-install.html).
-* Node.js - [Install Node.js 20](https://nodejs.org/en/), including the npm package management tool.
-* Docker - [Install Docker community edition](https://hub.docker.com/search/?type=edition&offering=community).
+1. **Create a User in Cognito (First Step)**:
+   - Go to the AWS Console and navigate to the Cognito service.
+   - Create a user in the User Pool created by the application.
+   - After creating the user, you will receive a password by email.
 
-To build and deploy your application for the first time, run the following in your shell:
+2. **Authenticate the User**:
+   - Use the username and password received to log in at the /auth endpoint.
+   - If your account is not yet verified, the /auth endpoint will provide a session that you must use to create a permanent password at the /changePassword endpoint.
 
-```bash
-sam build
-sam deploy --guided
-```
+3. **Create a Permanent Password**:
+   - Fill out the /changePassword endpoint with the new password.
+   - After successfully creating the new password, your account will be validated, and an authentication token will be generated.
+   - The token is valid for 5 hours. If the token expires, you will need to request a new token at the /auth endpoint, providing the username and the newly created password.
 
-The first command will build the source of your application. The second command will package and deploy your application to AWS, with a series of prompts:
+## Application Resources
 
-* **Stack Name**: The name of the stack to deploy to CloudFormation. This should be unique to your account and region, and a good starting point would be something matching your project name.
-* **AWS Region**: The AWS region you want to deploy your app to.
-* **Confirm changes before deploy**: If set to yes, any change sets will be shown to you before execution for manual review. If set to no, the AWS SAM CLI will automatically deploy application changes.
-* **Allow SAM CLI IAM role creation**: Many AWS SAM templates, including this example, create AWS IAM roles required for the AWS Lambda function(s) included to access AWS services. By default, these are scoped down to minimum required permissions. To deploy an AWS CloudFormation stack which creates or modifies IAM roles, the `CAPABILITY_IAM` value for `capabilities` must be provided. If permission isn't provided through this prompt, to deploy this example you must explicitly pass `--capabilities CAPABILITY_IAM` to the `sam deploy` command.
-* **Save arguments to samconfig.toml**: If set to yes, your choices will be saved to a configuration file inside the project, so that in the future you can just re-run `sam deploy` without parameters to deploy changes to your application.
+### S3 Buckets
 
-## Use the AWS SAM CLI to build and test locally
+- `bucketS3RepositoryObjects`: Stores repository objects with public read access.
 
-Build your application by using the `sam build` command.
+### DynamoDB Tables
 
-```bash
-my-application$ sam build
-```
+- `dynamoDBStoresTable`: Stores store registration data.
+- `dynamoDBProductsTable`: Stores product data, associated with stores.
 
-The AWS SAM CLI installs dependencies that are defined in `package.json`, creates a deployment package, and saves it in the `.aws-sam/build` folder.
+### SQS Queues
 
-Test a single function by invoking it directly with a test event. An event is a JSON document that represents the input that the function receives from the event source. Test events are included in the `events` folder in this project.
+- `SQSRequestStoreQueue`: Queue for store registration requests.
+- `SQSRequestProductQueue`: Queue for product registration requests.
 
-Run functions locally and invoke them with the `sam local invoke` command.
+### SNS Topics
 
-```bash
-my-application$ sam local invoke helloFromLambdaFunction --no-event
-```
+- `SNSTopicStoreIdNotification`: Dynamic topic for sending notification emails.
 
-## Add a resource to your application
+### Lambda Functions
 
-The application template uses AWS SAM to define application resources. AWS SAM is an extension of AWS CloudFormation with a simpler syntax for configuring common serverless application resources, such as functions, triggers, and APIs. For resources that aren't included in the [AWS SAM specification](https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md), you can use the standard [AWS CloudFormation resource types](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-template-resource-type-ref.html).
+- **storeRequestFunction**: Handles store registration requests.
+- **productRequestFunction**: Handles product registration requests.
+- **storeProcessFunction**: Processes store registrations, including SNS topic creation and email notification.
+- **productProcessFunction**: Processes product registrations, stores data in S3, and notify via email with SNS.
+- **emailApprovalFunction**: Verifies email confirmations and sends the store ID to the store owner.
+- **authorizationFunction**: Manages user authentication via AWS Cognito.
+- **permanentPasswordFunction**: Generates permanent passwords for users.
 
-Update `template.yaml` to add a dead-letter queue to your application. In the **Resources** section, add a resource named **MyQueue** with the type **AWS::SQS::Queue**. Then add a property to the **AWS::Serverless::Function** resource named **DeadLetterQueue** that targets the queue's Amazon Resource Name (ARN), and a policy that grants the function permission to access the queue.
+### API Gateway Endpoints
 
-```
-Resources:
-  MyQueue:
-    Type: AWS::SQS::Queue
-  helloFromLambdaFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      Handler: src/handlers/hello-from-lambda.helloFromLambdaHandler
-      Runtime: nodejs20.x
-      DeadLetterQueue:
-        Type: SQS
-        TargetArn: !GetAtt MyQueue.Arn
-      Policies:
-        - SQSSendMessagePolicy:
-            QueueName: !GetAtt MyQueue.QueueName
-```
+- `/store` (POST): Store registration request.
+- `/product` (POST): Product registration request.
+- `/auth` (POST): User authentication.
+- `/challenge` (POST): Password management (generate a permanent password).
 
-The dead-letter queue is a location for Lambda to send events that could not be processed. It's only used if you invoke your function asynchronously, but it's useful here to show how you can modify your application's resources and function configuration.
+## How to Deploy
 
-Deploy the updated application.
+### Prerequisites
 
-```bash
-my-application$ sam deploy
-```
+- AWS CLI configured with appropriate credentials and region.
+- AWS SAM CLI installed.
 
-Open the [**Applications**](https://console.aws.amazon.com/lambda/home#/applications) page of the Lambda console, and choose your application. When the deployment completes, view the application resources on the **Overview** tab to see the new resource. Then, choose the function to see the updated configuration that specifies the dead-letter queue.
+### Deployment Steps
 
-## Fetch, tail, and filter Lambda function logs
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/your-repo-name.git
+   cd your-repo-name
+   
+2. Build the application using AWS SAM:
 
-To simplify troubleshooting, the AWS SAM CLI has a command called `sam logs`. `sam logs` lets you fetch logs that are generated by your Lambda function from the command line. In addition to printing the logs on the terminal, this command has several nifty features to help you quickly find the bug.
+    ```bash
+    sam build
 
-**NOTE:** This command works for all Lambda functions, not just the ones you deploy using AWS SAM.
+3. Deploy the application:
 
-```bash
-my-application$ sam logs -n helloFromLambdaFunction --stack-name sam-app --tail
-```
+    ```bash
+    sam deploy
 
-**NOTE:** This uses the logical name of the function within the stack. This is the correct name to use when searching logs inside an AWS Lambda function within a CloudFormation stack, even if the deployed function name varies due to CloudFormation's unique resource name generation.
+3. After deploying the stack, AWS SAM will provide API Gateway URLs and other resource identifiers.
 
-You can find more information and examples about filtering Lambda function logs in the [AWS SAM CLI documentation](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/serverless-sam-cli-logging.html).
+## Postman Collection and Environment
 
-## Unit tests
+In this repository, you will find a Postman collection and environment files for testing the API endpoints. These files are set up to facilitate testing with automated token management. You can use these files to easily test the endpoints and verify the functionality of the application.
 
-Tests are defined in the `__tests__` folder in this project. Use `npm` to install the [Jest test framework](https://jestjs.io/) and run unit tests.
+### Postman Collection
 
-```bash
-my-application$ npm install
-my-application$ npm run test
-```
+The Postman collection includes the following endpoints:
 
-## Cleanup
+- **/store (POST)**: Register a new store.
+- **/product (POST)**: Register a new product.
+- **/auth (POST)**: Authenticate a user.
+- **/changePassword (POST)**: Create a permanent password.
 
-To delete the sample application that you created, use the AWS CLI. Assuming you used your project name for the stack name, you can run the following:
+### Postman Environment
 
-```bash
-sam delete --stack-name study-app
-```
+The Postman environment file includes variables for:
 
-## Resources
+- **API Base URL**: Base URL for the API Gateway endpoints.
+- **Authorization Token**: Automatically managed token for authenticated requests.
+- **USER_ID_FOR_SRP**: User ID required for changing the password.
+- **SESSION**: Session ID required for changing the password.
 
-For an introduction to the AWS SAM specification, the AWS SAM CLI, and serverless application concepts, see the [AWS SAM Developer Guide](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/what-is-sam.html).
+### Example Payloads
 
-Next, you can use the AWS Serverless Application Repository to deploy ready-to-use apps that go beyond Hello World samples and learn how authors developed their applications. For more information, see the [AWS Serverless Application Repository main page](https://aws.amazon.com/serverless/serverlessrepo/) and the [AWS Serverless Application Repository Developer Guide](https://docs.aws.amazon.com/serverlessrepo/latest/devguide/what-is-serverlessrepo.html).
+Here are example payloads for each of the endpoints you can test using Postman:
+
+#### Store Registration
+
+To register a new store, use the following payload in the /store endpoint:
+
+    {
+      "storeName": "Loja Teste",
+      "email": "loja.teste@gmail.com"
+    }
+
+#### Product Registration
+
+To register a new product, use the following payload in the /product endpoint:
+
+    {
+      "storeId": "31cd3182-3063-4f6f-8213-4dc184ab4cc5",
+      "productName": "Grape",
+      "price": 15.5
+    }
+
+#### User Authentication
+
+To authenticate a user, use the following payload in the /auth endpoint:
+
+    {
+      "username": "loja.teste@gmail.com",
+      "password": "uS71Anlb"
+    }
+
+#### Change Password
+
+To create a permanent password, use the following payload in the /changePassword endpoint:
+
+    {
+      "newPassword": "Teste.24#",
+      "userIdForSrp": "{{USER_ID_FOR_SRP}}",
+      "session": "{{SESSION}}"
+    }
+
+### Important Notes
+
+- **API Base URL** After deploying the application, you will receive the base URL for the API Gateway endpoints. Update the `API Base URL` variable in the Postman environment with this URL to ensure that the requests are correctly routed to your deployed application.
+- 
+- **Variables for** `changePassword` **Endpoint**: The variables `userIdForSrp` and session are dynamically provided by the `/auth` endpoint response. Ensure that these variables are correctly set in your Postman environment after receiving the response from `/auth`.
+
+### How to Use
+
+1. **Import the Collection**: Open Postman, go to File -> Import, and select the Postman collection file provided in the repository.
+
+2. **Set Up the Environment**: Import the Postman environment file in the same way. Update the API Base URL with the URL provided after deploying the application. This will configure the base URL and token management, and set up the necessary variables (USER_ID_FOR_SRP and SESSION).
+
+3. **Test the Endpoints**: Use the provided example payloads to test the API endpoints. Ensure that the environment variables are correctly set for automated token management and the password change process.
