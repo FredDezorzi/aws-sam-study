@@ -1,0 +1,269 @@
+{
+	"info": {
+		"_postman_id": "f390c80e-4b62-4db8-94b0-da21b2036e9b",
+		"name": "AWS SAM",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "26426883",
+		"_collection_link": "https://planetary-eclipse-884112.postman.co/workspace/Team-Workspace~464b885d-5151-46ef-861a-10daf8ffe729/collection/26426883-f390c80e-4b62-4db8-94b0-da21b2036e9b?action=share&source=collection_link&creator=26426883"
+	},
+	"item": [
+		{
+			"name": "Store",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{ID_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "PT",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"storeName\": \"test\",\r\n  \"email\": \"test@gmail.com\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/store",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"store"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Product",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"protocolProfileBehavior": {
+				"disabledSystemHeaders": {}
+			},
+			"request": {
+				"auth": {
+					"type": "bearer",
+					"bearer": [
+						{
+							"key": "token",
+							"value": "{{ID_TOKEN}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "PT",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"storeId\": \"7886e4cf-6472-4852-8689-96e8d4577645\",\r\n  \"productName\": \"grape\",\r\n  \"price\": 15.5\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/product",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"product"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Auth",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"if (response.AuthenticationResult) {\r",
+							"    const authResult = response.AuthenticationResult;\r",
+							"    pm.environment.set(\"ID_TOKEN\", authResult.IdToken);\r",
+							"    console.log(\"Variáveis de ambiente definidas com sucesso!\");\r",
+							"\r",
+							"} else if (response.ChallengeName === 'NEW_PASSWORD_REQUIRED') {\r",
+							"    pm.environment.set(\"USER_ID_FOR_SRP\", response.ChallengeParameters.USER_ID_FOR_SRP);\r",
+							"    pm.environment.set(\"SESSION\", response.Session);\r",
+							"    console.log(\"Desafio de nova senha detectado e variáveis de ambiente definidas!\");\r",
+							"} else {\r",
+							"    console.log(\"Resposta desconhecida ou sem tokens.\");\r",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				},
+				{
+					"listen": "prerequest",
+					"script": {
+						"exec": [
+							""
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "PT",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"username\": \"test@gmail.com\",\r\n  \"password\": \"rpb7BxMc\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/auth",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"auth"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "permanentPassword",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"const response = pm.response.json();\r",
+							"\r",
+							"if (response.AuthenticationResult) {\r",
+							"    const authResult = response.AuthenticationResult;\r",
+							"    pm.environment.set(\"ID_TOKEN\", authResult.IdToken);\r",
+							"    console.log(\"Variáveis de ambiente definidas com sucesso!\");\r",
+							"\r",
+							"} else {\r",
+							"    console.log(\"Resposta desconhecida ou sem tokens.\");\r",
+							"}"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept-Language",
+						"value": "PT",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"newPassword\": \"Test.20#\",\r\n  \"userIdForSrp\": \"{{USER_ID_FOR_SRP}}\",\r\n  \"session\": \"{{SESSION}}\"\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{BASE_URL}}/v1/permanentPassword",
+					"host": [
+						"{{BASE_URL}}"
+					],
+					"path": [
+						"v1",
+						"permanentPassword"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"variable": [
+		{
+			"key": "{\"message\":\"Request does not contain valid parameters\"}",
+			"value": ""
+		},
+		{
+			"key": "{\"message\":\"Error: Request does not contain valid parameters\"}",
+			"value": ""
+		}
+	]
+}
