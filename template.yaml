@@ -341,7 +341,7 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       CodeUri: src
-      Handler: challenge/index.challengeHandler
+      Handler: permanentPassword/index.permanentPasswordHandler
       Runtime: nodejs20.x
       Architectures:
         - x86_64
@@ -356,7 +356,7 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /challenge
+            Path: /permanentPassword
             Method: POST
             RestApiId: !Ref apiGateway
     Metadata:
@@ -369,7 +369,7 @@ Resources:
         - aws-sdk
         - "@aws-sdk/client-cognito-identity-provider"
         EntryPoints:
-          - challenge/index.js
+          - permanentPassword/index.js
 
   #########################################################
   ##                  API GATEWAY
@@ -385,10 +385,10 @@ Resources:
           title: 'Web App API'
           version: '1.0'
         paths:
-          /changePassword:
+          /permanentPassword:
             post:
               summary: 'Generate a permanent password for the user.'
-              operationId: 'changePassword'
+              operationId: 'permanentPassword'
               consumes:
                 - 'application/json'
               produces:
@@ -416,7 +416,7 @@ Resources:
                 type: aws_proxy
                 httpMethod: POST
                 uri:
-                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${challengeFunction.Arn}/invocations
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${permanentPasswordFunction.Arn}/invocations
                 responses: {}
           /auth:
             post:

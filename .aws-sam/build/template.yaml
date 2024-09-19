@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Infraestrutura serverless para web app com buckets S3, CloudFront, DynamoDB,
-  Lambda, SQS, SNS e API Gateway.
+Description: Serverless infrastructure for a web app with S3 buckets, Cognito, EventBridge,
+  DynamoDB, Lambda, SQS, SNS, and API Gateway.
 Transform:
 - AWS::Serverless-2016-10-31
 Resources:
@@ -83,7 +83,7 @@ Resources:
       - x86_64
       Timeout: 10
       MemorySize: 128
-      Description: Store registration request
+      Description: Store registration request.
       Environment:
         Variables:
           STORES_TABLE:
@@ -133,7 +133,7 @@ Resources:
       - x86_64
       Timeout: 10
       MemorySize: 128
-      Description: Product registration request
+      Description: Product registration request.
       Environment:
         Variables:
           PRODUCTS_TABLE:
@@ -188,7 +188,7 @@ Resources:
       - x86_64
       Timeout: 10
       MemorySize: 128
-      Description: Processes store registration
+      Description: Processes store registration.
       Environment:
         Variables:
           STORES_TABLE:
@@ -236,7 +236,7 @@ Resources:
       - x86_64
       Timeout: 10
       MemorySize: 128
-      Description: Processes product registration
+      Description: Processes product registration.
       Environment:
         Variables:
           BUCKET_STORAGE:
@@ -287,7 +287,7 @@ Resources:
       - x86_64
       Timeout: 10
       MemorySize: 128
-      Description: "Verifica a aprova\xE7\xE3o de email de varios topicos SNS"
+      Description: Check the email approval for multiple SNS topics.
       Environment:
         Variables:
           STORES_TABLE:
@@ -333,7 +333,7 @@ Resources:
       - x86_64
       Timeout: 10
       MemorySize: 128
-      Description: Cria token de acesso para o usuario
+      Description: Generate access token for the user.
       Environment:
         Variables:
           COGNITO_ID:
@@ -363,17 +363,17 @@ Resources:
         Sourcemap: true
         Target: es2020
       SamResourceId: authorizationFunction
-  challengeFunction:
+  permanentPasswordFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: challengeFunction
-      Handler: index.challengeHandler
+      CodeUri: permanentPasswordFunction
+      Handler: index.permanentPasswordHandler
       Runtime: nodejs20.x
       Architectures:
       - x86_64
       Timeout: 10
       MemorySize: 128
-      Description: Muda a senha do userpool
+      Description: Generate a permanent password for the user.
       Environment:
         Variables:
           COGNITO_ID:
@@ -387,7 +387,7 @@ Resources:
         Api:
           Type: Api
           Properties:
-            Path: /challenge
+            Path: /permanentPassword
             Method: POST
             RestApiId:
               Ref: apiGateway
@@ -395,14 +395,14 @@ Resources:
       BuildMethod: esbuild
       BuildProperties:
         EntryPoints:
-        - challenge/index.js
+        - permanentPassword/index.js
         External:
         - aws-sdk
         - '@aws-sdk/client-cognito-identity-provider'
         Minify: true
         Sourcemap: true
         Target: es2020
-      SamResourceId: challengeFunction
+      SamResourceId: permanentPasswordFunction
   apiGateway:
     Type: AWS::Serverless::Api
     Properties:
@@ -413,10 +413,10 @@ Resources:
           title: Web App API
           version: '1.0'
         paths:
-          /challenge:
+          /permanentPassword:
             post:
-              summary: challenge new password request
-              operationId: challengeRequest
+              summary: Generate a permanent password for the user.
+              operationId: permanentPassword
               consumes:
               - application/json
               produces:
@@ -430,9 +430,9 @@ Resources:
                   properties:
                     newPassword:
                       type: string
-                    USER_ID_FOR_SRP:
+                    userIdForSrp:
                       type: string
-                    Session:
+                    session:
                       type: string
               responses:
                 '200':
@@ -444,7 +444,7 @@ Resources:
                 type: aws_proxy
                 httpMethod: POST
                 uri:
-                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${challengeFunction.Arn}/invocations
+                  Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${permanentPasswordFunction.Arn}/invocations
                 responses: {}
           /auth:
             post:
@@ -607,7 +607,7 @@ Resources:
       Identifier: cognito-studyapp-resource-Server
       Name: cognitoResourceServer
       Scopes:
-      - ScopeDescription: "Permissao de acesso \xE0 autentifica\xE7\xE3o"
+      - ScopeDescription: Access permission to authentication.
         ScopeName: user_acess
       UserPoolId:
         Ref: cognitoUserPool
