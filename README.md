@@ -2,6 +2,10 @@
 
 This repository contains the AWS SAM (Serverless Application Model) template to set up the infrastructure for a web application. The infrastructure includes services like S3, Cognito, EventBridge, DynamoDB, Lambda, SQS, SNS, and API Gateway.
 
+## Project Architecture
+
+<img src="/architecture/architecture_AWS.png">
+
 ## Features
 
 - **S3 Buckets**: Storage for repository objects.
